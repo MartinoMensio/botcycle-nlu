@@ -3,7 +3,7 @@ Experiments with Natural Language Understanding
 
 ## Wit_data
 
-This folder contains the wit.ai dataset. To download simply run the `download.sh` script (you need `WIT_TOKEN` env variable specific for your bot, leak it from browser developer tools)
+This folder contains the wit.ai dataset. To download simply run the `download.sh` script (you need `WIT_TOKEN` env variable specific for your wit.ai application, which can be found under Settings in the Wit console)
 
 ## Spacy_entities
 
