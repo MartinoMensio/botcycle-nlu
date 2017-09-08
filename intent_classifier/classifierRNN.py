@@ -1,48 +1,28 @@
 import numpy as np
-import pandas as pd
-import _pickle as cPickle
-from collections import defaultdict
-import re
-
-from bs4 import BeautifulSoup
 
 import sys
 import os
 
-# TODO remove this line to go on tensorflow, much faster
+import spacy
+
+# uncomment this line to change backend. Faster seems to be TensorFlow
 #os.environ['KERAS_BACKEND']='theano'
 from keras.models import load_model
-#os.environ['THEANO_FLAGS']='device=cuda,floatX=float32'
 
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
 
-from keras.layers import Embedding
-from keras.layers import Dense, Input, Flatten
-from keras.layers import Conv1D, MaxPooling1D, Embedding, Merge, Dropout, LSTM, GRU, Bidirectional
+from keras.layers import Dense, Input
+from keras.layers import Conv1D, MaxPooling1D, Merge, Dropout, LSTM, GRU, Bidirectional
 from keras.models import Model
 
 from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
-MAX_SEQUENCE_LENGTH = 1000
-MAX_NB_WORDS = 20000
-EMBEDDING_DIM = 300
+MAX_SEQUENCE_LENGTH = 100
+EMBEDDING_DIM = 300 # spacy has glove with 300-dimensional embeddings
 VALIDATION_SPLIT = 0.2
 
-def clean_str(string):
-    """
-    Tokenization/string cleaning for dataset
-    Every dataset is lower cased except
-    """
-    string = re.sub(r"\\", "", string)    
-    string = re.sub(r"\'", "", string)    
-    string = re.sub(r"\"", "", string)    
-    return string.strip().lower()
-
-# START MODIFICATIONS
 import preprocess_data
 
 data_train = preprocess_data.get_train_data(preprocess_data.load_expressions())
@@ -51,34 +31,32 @@ texts = []
 labels = []
 
 intents = {}
-
 # translation from intent value (string) to int (index)
 for index, value in enumerate(preprocess_data.load_intents()):
     intents[value] = index
 
-for text, intent in data_train:
-    text = BeautifulSoup(text)
-    texts.append(clean_str(text.get_text()))
+nlp = spacy.load('en')
+
+data = np.zeros((len(data_train), MAX_SEQUENCE_LENGTH, EMBEDDING_DIM))
+for idx, (text, intent) in enumerate(data_train):
+    # convert from sentences to glove matrix
+    # parse the sentence
+    doc = nlp(text)
+    for index, word in enumerate(doc):
+        data[idx][index] = word.vector
+
     labels.append(intents[intent])
-# END MODIFICATIONS    
-
-tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
-tokenizer.fit_on_texts(texts)
-sequences = tokenizer.texts_to_sequences(texts)
-
-word_index = tokenizer.word_index
-print('Found %s unique tokens.' % len(word_index))
-
-data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 
 labels = to_categorical(np.asarray(labels))
 print('Shape of data tensor:', data.shape)
 print('Shape of label tensor:', labels.shape)
 
+# shuffle the data
 indices = np.arange(data.shape[0])
 np.random.shuffle(indices)
 data = data[indices]
 labels = labels[indices]
+# split the data in train and validation
 nb_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
 
 x_train = data[:-nb_validation_samples]
@@ -86,48 +64,13 @@ y_train = labels[:-nb_validation_samples]
 x_val = data[-nb_validation_samples:]
 y_val = labels[-nb_validation_samples:]
 
-print('Traing and validation set number of positive and negative reviews')
+print('Traing and validation set number of sentences for each intent')
 print(y_train.sum(axis=0))
 print(y_val.sum(axis=0))
 
-# BEGIN EDIT
-"""
-GLOVE_DIR = "~/Testground/data/glove"
-embeddings_index = {}
-f = open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt'))
-for line in f:
-    values = line.split()
-    word = values[0]
-    coefs = np.asarray(values[1:], dtype='float32')
-    embeddings_index[word] = coefs
-f.close()
-"""
-import spacy
-nlp = spacy.load('en')
-
-# END EDIT
-
-#print('Total %s word vectors.' % len(embeddings_index))
-
-embedding_matrix = np.random.random((len(word_index) + 1, EMBEDDING_DIM))
-for word, i in word_index.items():
-    #embedding_vector = embeddings_index.get(word)
-    embedding_vector = nlp(word).vector
-    if embedding_vector is not None:
-        # words not found in embedding index will be all-zeros.
-        embedding_matrix[i] = embedding_vector
-
-# create bidirectional_LSTM model
-        
-embedding_layer = Embedding(len(word_index) + 1,
-                            EMBEDDING_DIM,
-                            weights=[embedding_matrix],
-                            input_length=MAX_SEQUENCE_LENGTH,
-                            trainable=True)
-
-sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
-embedded_sequences = embedding_layer(sequence_input)
-l_lstm = Bidirectional(LSTM(100))(embedded_sequences)
+# sequence_input is a matrix of glove vectors (one for each input word)
+sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH, EMBEDDING_DIM,), dtype='float32')
+l_lstm = Bidirectional(LSTM(100))(sequence_input)
 preds = Dense(len(intents), activation='softmax')(l_lstm)
 model = Model(sequence_input, preds)
 model.compile(loss='categorical_crossentropy',
@@ -141,7 +84,15 @@ model.fit(x_train, y_train, validation_data=(x_val, y_val),
 
 model.save('model_bidirectional_LSTM.h5')
 
-# TODO fix dimensionality
+
+
+
+
+
+
+
+"""
+# TODO fix dimensionality to test
 # Attention GRU network		  
 class AttLayer(Layer):
     def __init__(self, **kwargs):
@@ -201,3 +152,4 @@ model.fit(x_train, y_train, validation_data=(x_val, y_val),
           nb_epoch=10, batch_size=50)
 
 model.save('model_attention_gru.h5')
+"""
