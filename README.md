@@ -8,3 +8,11 @@ This folder contains the wit.ai dataset. To download simply run the `download.sh
 ## Spacy_entities
 
 Contains code that trains the NER of spacy on the wit_data. Run the `train.py` script that will load the `'en'` model and after training will save the updated model in the subfolder `model`.
+
+## Intent classifier
+
+Contains some models for classifying the intent of the sentences. As above, the training data comes from the wit.ai export.
+
+The models are:
+
+- bidirectional LSTM
