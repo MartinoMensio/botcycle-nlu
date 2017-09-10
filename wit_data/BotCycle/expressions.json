@@ -52,6 +52,15 @@
       ]
     },
     {
+      "text" : "Hey bro!",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"greeting\""
+        }
+      ]
+    },
+    {
       "text" : "Hi",
       "entities" : [
         {
@@ -223,6 +232,15 @@
       ]
     },
     {
+      "text" : "Who are you?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"info\""
+        }
+      ]
+    },
+    {
       "text" : "a bike",
       "entities" : [
         {
@@ -256,11 +274,41 @@
       ]
     },
     {
+      "text" : "can you help me in Toronto?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"city_supported\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"Toronto\"",
+          "start" : 19,
+          "end" : 26
+        }
+      ]
+    },
+    {
       "text" : "can you locate me?",
       "entities" : [
         {
           "entity" : "intent",
           "value" : "\"ask_position\""
+        }
+      ]
+    },
+    {
+      "text" : "do you have data about New York?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"city_supported\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"New York\"",
+          "start" : 23,
+          "end" : 31
         }
       ]
     },
@@ -378,6 +426,15 @@
         {
           "entity" : "intent",
           "value" : "\"search_slot\""
+        }
+      ]
+    },
+    {
+      "text" : "geolocation",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"ask_position\""
         }
       ]
     },
@@ -519,7 +576,25 @@
       ]
     },
     {
+      "text" : "good!",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"thank\""
+        }
+      ]
+    },
+    {
       "text" : "hello",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"greeting\""
+        }
+      ]
+    },
+    {
+      "text" : "hello man",
       "entities" : [
         {
           "entity" : "intent",
@@ -556,6 +631,15 @@
     },
     {
       "text" : "hi there!",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"greeting\""
+        }
+      ]
+    },
+    {
+      "text" : "hola",
       "entities" : [
         {
           "entity" : "intent",
@@ -1711,6 +1795,22 @@
       ]
     },
     {
+      "text" : "i want to go  to venaria",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"venaria\"",
+          "role" : "to",
+          "start" : 17,
+          "end" : 24
+        }
+      ]
+    },
+    {
       "text" : "i want to go from piazza castello to venaria",
       "entities" : [
         {
@@ -2325,6 +2425,15 @@
       ]
     },
     {
+      "text" : "update my position",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"ask_position\""
+        }
+      ]
+    },
+    {
       "text" : "very useful",
       "entities" : [
         {
@@ -2382,6 +2491,15 @@
         {
           "entity" : "intent",
           "value" : "\"info\""
+        }
+      ]
+    },
+    {
+      "text" : "where am i?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"ask_position\""
         }
       ]
     },
@@ -2545,6 +2663,15 @@
       ]
     },
     {
+      "text" : "who am I talking to?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"info\""
+        }
+      ]
+    },
+    {
       "text" : "who are you?",
       "entities" : [
         {
@@ -2568,6 +2695,15 @@
         {
           "entity" : "intent",
           "value" : "\"info\""
+        }
+      ]
+    },
+    {
+      "text" : "wow thanks!",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"thank\""
         }
       ]
     }
