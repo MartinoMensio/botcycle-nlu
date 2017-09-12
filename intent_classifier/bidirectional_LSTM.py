@@ -18,8 +18,9 @@ from keras.models import Model
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
+from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 
 # for the plot
 import seaborn as sn
@@ -88,19 +89,23 @@ n_folds = 3
 # skf will profide indices to iterate over in each fold
 skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
 
-results = []
+results = np.zeros((n_folds))
 
 for i, (train, test) in enumerate(skf.split(np.zeros((len(data_train), MAX_SEQUENCE_LENGTH * EMBEDDING_DIM)), np.zeros((len(data_train),)))):
     print("Running Fold", i + 1, "/", n_folds)
 
     model = create_model()
 
-    model.fit(data[train], labels[train], validation_data=(data[test], labels[test]), nb_epoch=10, batch_size=50)
+    model.fit(data[train], labels[train], validation_data=(data[test], labels[test]), epochs=10, batch_size=50)
     
     # generate confusion matrix
     y_pred = model.predict(data[test])
     confusion = confusion_matrix(labels[test].argmax(axis=1), y_pred.argmax(axis=1))
-    results.append(confusion)
+
+    # compute f1 score weighted by support
+    f1 = f1_score(labels[test].argmax(axis=1), y_pred.argmax(axis=1), average='weighted')
+    results[i] = f1
+    print('f1 at fold ' + str(i + 1) + ': ' + str(f1))
     
     # plot
     # TODO add params index = intents, columns = intents when sure that 10-fold has minimum one item for class
@@ -109,8 +114,9 @@ for i, (train, test) in enumerate(skf.split(np.zeros((len(data_train), MAX_SEQUE
     fig = sn.heatmap(df_cm, annot=True,annot_kws={"size": 16})# font size
     fig.get_figure().savefig('conf_' + str(i + 1) + '.png')
     plt.clf()
+    
 
-# print(results)
+print('mean f1 score: ' + results.mean())
 
 print("Now training on full dataset, no validation")
 model.fit(data, labels, nb_epoch=10, batch_size=50)
