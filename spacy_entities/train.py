@@ -75,7 +75,7 @@ def train_ner(nlp, train_data, output_dir):
         nlp.save_to_directory(output_dir)
 
 
-def main(model_name='en', output_directory='model'):
+def main(model_name='en', output_directory='models'):
     print("Loading initial model", model_name)
     nlp = spacy.load(model_name)
     if output_directory is not None:

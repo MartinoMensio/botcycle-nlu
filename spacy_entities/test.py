@@ -1,7 +1,7 @@
 import spacy
 import sys
 
-nlp = spacy.load('en', path='model')
+nlp = spacy.load('en', path='models')
 
 print('Test your sentences.')
 print('> ', end='', flush=True)
