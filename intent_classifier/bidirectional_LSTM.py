@@ -70,6 +70,7 @@ print('Number of sentences for each intent')
 print(intents)
 print(labels.sum(axis=0))
 
+
 def create_model():
     # sequence_input is a matrix of glove vectors (one for each input word)
     sequence_input = Input(
@@ -78,14 +79,23 @@ def create_model():
     preds = Dense(len(intents), activation='softmax')(l_lstm)
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy',
-                optimizer='rmsprop',
-                metrics=['acc'])
+                  optimizer='rmsprop',
+                  metrics=['acc'])
 
     model.summary()
     return model
 
 
-n_folds = 3
+def my_confusion_matrix(y_true, y_pred, n_classes):
+    """This function returns the confusion matrix tolerant to classes without true samples"""
+    from scipy.sparse import coo_matrix
+    CM = coo_matrix((np.ones(y_true.shape[0], dtype=np.int), (y_true, y_pred)),
+                    shape=(n_classes, n_classes)
+                    ).toarray()
+    return CM
+
+
+n_folds = 10
 # skf will profide indices to iterate over in each fold
 skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
 
@@ -96,27 +106,29 @@ for i, (train, test) in enumerate(skf.split(np.zeros((len(data_train), MAX_SEQUE
 
     model = create_model()
 
-    model.fit(data[train], labels[train], validation_data=(data[test], labels[test]), epochs=10, batch_size=50)
-    
+    model.fit(data[train], labels[train], validation_data=(
+        data[test], labels[test]), epochs=10, batch_size=50)
+
     # generate confusion matrix
     y_pred = model.predict(data[test])
-    confusion = confusion_matrix(labels[test].argmax(axis=1), y_pred.argmax(axis=1))
+    confusion = my_confusion_matrix(labels[test].argmax(
+        axis=1), y_pred.argmax(axis=1), len(intents))
 
     # compute f1 score weighted by support
-    f1 = f1_score(labels[test].argmax(axis=1), y_pred.argmax(axis=1), average='weighted')
+    f1 = f1_score(labels[test].argmax(axis=1),
+                  y_pred.argmax(axis=1), average='weighted')
     results[i] = f1
     print('f1 at fold ' + str(i + 1) + ': ' + str(f1))
-    
+
     # plot
-    # TODO add params index = intents, columns = intents when sure that 10-fold has minimum one item for class
-    df_cm = pd.DataFrame(confusion, index = intents, columns = intents)
-    sn.set(font_scale=1.4)#for label size
-    fig = sn.heatmap(df_cm, annot=True,annot_kws={"size": 16})# font size
+    df_cm = pd.DataFrame(confusion, index=intents, columns=intents)
+    sn.set(font_scale=1.4)  # for label size
+    fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
     fig.get_figure().savefig('conf_' + str(i + 1) + '.png')
     plt.clf()
-    
 
-print('mean f1 score: ' + results.mean())
+
+print('mean f1 score: ' + str(results.mean()))
 
 print("Now training on full dataset, no validation")
 model.fit(data, labels, nb_epoch=10, batch_size=50)
