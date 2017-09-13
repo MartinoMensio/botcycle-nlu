@@ -16,7 +16,7 @@ from sklearn.metrics import confusion_matrix, f1_score
 
 MAX_SEQUENCE_LENGTH = 100
 EMBEDDING_DIM = 300 # spacy has glove with 300-dimensional embeddings
-MODEL_NAME = 'bidirectional_lstm'
+MODEL_NAME = 'mean'
 
 import model_utils
 
@@ -29,11 +29,11 @@ labels = []
 intents = model_utils.load_labels()
 intents_lookup = model_utils.get_intents_lookup(intents)
 
-inputs = np.zeros((len(data_train), MAX_SEQUENCE_LENGTH, EMBEDDING_DIM))
+inputs = np.zeros((len(data_train), EMBEDDING_DIM))
 for idx, (text, intent) in enumerate(data_train):
     encoded = model_utils.encode_sentence(text)
-    # copy the values, equivalent of padding
-    inputs[idx,:encoded.shape[0],:encoded.shape[1]] = encoded[:MAX_SEQUENCE_LENGTH,:]
+    # sum up vectors
+    inputs[idx] = encoded.mean(0)
     # append the id of the intent
     labels.append(intents_lookup[intent])
 
@@ -56,9 +56,8 @@ print(labels.sum(axis=0))
 def create_model():
     # sequence_input is a matrix of glove vectors (one for each input word)
     sequence_input = Input(
-        shape=(MAX_SEQUENCE_LENGTH, EMBEDDING_DIM,), dtype='float32')
-    l_lstm = Bidirectional(LSTM(100))(sequence_input)
-    preds = Dense(len(intents), activation='softmax')(l_lstm)
+        shape=(EMBEDDING_DIM,), dtype='float32')
+    preds = Dense(len(intents), activation='softmax')(sequence_input)
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy',
                   optimizer='rmsprop',
@@ -70,4 +69,4 @@ def create_model():
 n_folds = 10
 f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, MODEL_NAME)
 
-model_utils.save_full_train(create_model, inputs, labels, MODEL_NAME)
+model_utils.save_full_train(create_model, inputs, labels, MODEL_NAME, {'f1': f1})

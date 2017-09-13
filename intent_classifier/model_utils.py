@@ -1,3 +1,5 @@
+import os
+import json
 import numpy as np
 import seaborn as sn
 import pandas as pd
@@ -54,6 +56,9 @@ def plot_confusion(confusion, label_values, path):
     plt.clf()
 
 def kfold(create_model_function, n_folds, data, labels, label_names, model_name):
+    model_path = MODELS_PATH + model_name + '/'
+    if not os.path.isdir(model_path):
+        os.makedirs(model_path)
     """data must be a numpy array, one element for each input value"""
     # skf will profide indices to iterate over in each fold
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
@@ -67,7 +72,7 @@ def kfold(create_model_function, n_folds, data, labels, label_names, model_name)
             # first iteration
             model.summary()
             # this requires graphviz binaries also
-            plot_model(model, to_file=MODELS_PATH + model_name + '/model.png', show_shapes=True)
+            plot_model(model, to_file=model_path + 'model.png', show_shapes=True)
 
         print("Running Fold", i + 1, "/", n_folds)
 
@@ -87,17 +92,24 @@ def kfold(create_model_function, n_folds, data, labels, label_names, model_name)
         f1_scores[i] = f1
         confusion_sum = np.add(confusion_sum, confusion)
 
-        plot_confusion(confusion, label_names, MODELS_PATH + model_name + '/confusion_iteration_' + str(i + 1))
+        plot_confusion(confusion, label_names, model_path + 'confusion_iteration_' + str(i + 1))
 
     f1_mean = f1_scores.mean()
     print('mean f1 score: ' + str(f1_mean))
-    plot_confusion(confusion_sum, label_names, MODELS_PATH + model_name + '/confusion_sum')
+    plot_confusion(confusion_sum, label_names, model_path + 'confusion_sum')
 
     return f1_mean
 
-def save_full_train(create_model_function, inputs, labels, model_name):
+def save_full_train(create_model_function, inputs, labels, model_name, stats):
+    model_path = MODELS_PATH + model_name + '/'
+    if not os.path.isdir(model_path):
+        os.makedirs(model_path)
     print("Now training on full dataset, no validation")
     model = create_model_function()
     model.fit(inputs, labels, nb_epoch=10, batch_size=50)
 
-    model.save(MODELS_PATH + model_name + '/model.h5')
+    model.save(model_path + 'model.h5')
+    stats['model'] = model_name
+
+    with open(model_path+'/stats.json', 'w+') as stats_file:
+        json.dump(stats, stats_file)
