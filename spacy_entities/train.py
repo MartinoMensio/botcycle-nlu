@@ -19,9 +19,20 @@ Documentation:
 Example adapted from https://github.com/explosion/spaCy/blob/master/examples/training/train_new_entity_type.py
 """
 from __future__ import unicode_literals, print_function
+import gc
+import os
+import numpy as np
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold
+from keras.utils import plot_model
 
-import random
-from pathlib import Path
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+
 import random
 
 import spacy
@@ -30,8 +41,65 @@ from spacy.tagger import Tagger
 
 import tag_data
 
+def get_entities_lookup(entities):
+    """From a list of entities gives back a dictionary that maps the value to the index in the original list"""
+    entities_lookup = {}
+    for index, value in enumerate(entities):
+        entities_lookup[value] = index
+    return entities_lookup
 
-def train_ner(nlp, train_data, output_dir):
+def kfold(model_name, n_folds, data, entities_lookup):
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
+
+    f1_scores = np.zeros((n_folds))
+    # dimensions +1 because also no entity class (indexed last)
+    extended_entities_lookup = entities_lookup.copy()
+    extended_entities_lookup['NONE'] = len(entities_lookup)
+    confusion_sum = np.zeros((len(extended_entities_lookup), len(extended_entities_lookup)))
+
+    for i, (train, test) in enumerate(skf.split(np.zeros((data.shape[0],)), np.zeros((data.shape[0],)))):
+        print("Running Fold", i + 1, "/", n_folds)
+        nlp = spacy.load(model_name)
+        # passing None because don't want to save every fold model
+        train_ner(nlp, data[train], [key for key in entities_lookup], None)
+        for test_data in data[test]:
+            # test_data is like {'text':'', 'entities':{'entity','value','start','end'}}
+            doc = nlp(test_data['text'])
+            # true_ents maps 'start_index:end_index' of entity to entity name, e.g. {'10:16': 'LOCATION'}
+            true_ents = {'{}:{}'.format(true_ent['start'], true_ent['end']): true_ent['entity'].upper() for true_ent in test_data['entities']}
+            for predicted_ent in doc.ents:
+                true_ent = true_ents.get('{}:{}'.format(predicted_ent.start_char, predicted_ent.end_char), 'NONE')
+                # the fallback parameter is needed in case unexpected types of entities are found
+                predicted_class = extended_entities_lookup.get(predicted_ent.label_, extended_entities_lookup['NONE'])
+                true_class = extended_entities_lookup[true_ent]
+                # actual class indexes the columns while predicted class indexes the rows
+                confusion_sum[predicted_class, true_class] += 1
+                if predicted_class is not true_class:
+                    # TODO careful to boundaries
+                    print('wrong prediction in "' + str(doc) + '". "' + str(predicted_ent.text) + '" was classified as', predicted_class, 'but was', true_class)
+
+            # now also add some NONE->NONE values, one for each sentence? TODO
+            confusion_sum[extended_entities_lookup['NONE'], extended_entities_lookup['NONE']] += 1
+        
+        # free memory before death
+        del nlp
+        gc.collect()
+    
+    """
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = 2*((precision*recall)/(precision+recall))
+    """
+    print('final confusion matrix:\n', confusion_sum)
+    return confusion_sum, extended_entities_lookup
+
+def train_ner(nlp, data, entity_names, output_directory):
+    train_data = list(map(lambda x: (x['text'], list(map(lambda ent: (
+        ent['start'], ent['end'], ent['entity'].upper()), x['entities']))), data))
+
+    for entity_name in entity_names:
+            nlp.entity.add_label(entity_name)
+
     # Add new words to vocab
     for raw_text, _ in train_data:
         doc = nlp.make_doc(raw_text)
@@ -69,42 +137,39 @@ def train_ner(nlp, train_data, output_dir):
     nlp.end_training()
 
     # Save to directory
-    if output_dir:
-        if not output_dir.exists():
-            output_dir.mkdir()
-        nlp.save_to_directory(output_dir)
+    if output_directory:
+        nlp.save_to_directory(output_directory)
+
+# TODO remove duplicated code, same as intent model utils
+def plot_confusion(confusion, label_values, path):
+    df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
+    #sn.set(font_scale=1.4)  # for label size
+    fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
+    fig.get_figure().savefig(path + '.png')
+    plt.clf()
 
 
-def main(model_name='en', output_directory='models'):
+def main(n_folds='10', model_name='en', output_directory='models'):
     print("Loading initial model", model_name)
-    nlp = spacy.load(model_name)
-    if output_directory is not None:
-        output_directory = Path(output_directory)
+    if not os.path.isdir(output_directory):
+        os.makedirs(output_directory)
 
     expressions = tag_data.load_expressions()
-    tagged = tag_data.tag(expressions)
+    data = tag_data.tag(expressions)
+    data = np.array(data)
 
-    train_data = list(map(lambda x: (x['text'], list(map(lambda ent: (
-        ent['start'], ent['end'], ent['entity'].upper()), x['entities']))), tagged))
+    entities = tag_data.load_entities()
+    entities = list(map(str.upper,entities))
+    entities_lookup = get_entities_lookup(entities)
 
-    for entity in tag_data.load_entities():
-        nlp.entity.add_label(entity.upper())
-    train_ner(nlp, train_data, output_directory)
+    if True:
+        n_folds = int(n_folds)
+        confusion, extended_entities_lookup = kfold(model_name, n_folds, data, entities_lookup)
+        plot_confusion(confusion, [key for key in extended_entities_lookup], output_directory + '/confusion_' + str(n_folds) + 'folds')
 
-    # Test that the entity is recognized
-    doc = nlp('I want to go from piazza statuto to via garibaldi')
-    print("Ents in 'I want to go from piazza statuto to via garibaldi':")
-    for ent in doc.ents:
-        print(ent.label_, ent.text)
-    if output_directory:
-        print("Loading from", output_directory)
-        nlp2 = spacy.load('en', path=output_directory)
-        for entity in tag_data.load_entities():
-            nlp.entity.add_label(entity.upper())
-        doc2 = nlp2('I want to go from piazza statuto to via garibaldi')
-        for ent in doc2.ents:
-            print(ent.label_, ent.text)
-
+    # now train on full data
+    nlp = spacy.load('en')
+    train_ner(nlp, data, entities, output_directory)
 
 if __name__ == '__main__':
     import plac

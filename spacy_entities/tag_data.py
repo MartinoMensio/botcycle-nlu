@@ -23,5 +23,4 @@ def tag(expressions):
     result = list(map(lambda x: {'text': x['text'], 'entities': [
                   ent for ent in x['entities'] if ent['entity'] != "intent"], }, array))
 
-    print(result)
     return result
