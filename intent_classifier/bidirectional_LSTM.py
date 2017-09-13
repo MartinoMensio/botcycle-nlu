@@ -1,14 +1,5 @@
 import numpy as np
 
-import sys
-import os
-
-import spacy
-
-# uncomment this line to change backend. Faster seems to be TensorFlow
-# os.environ['KERAS_BACKEND'] = 'theano'
-from keras.models import load_model
-
 from keras.utils.np_utils import to_categorical
 
 from keras.layers import Dense, Input
@@ -23,50 +14,38 @@ from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix, f1_score
 
-# for the plot
-import seaborn as sn
-import pandas as pd
-import matplotlib.pyplot as plt
-
 MAX_SEQUENCE_LENGTH = 100
-EMBEDDING_DIM = 300  # spacy has glove with 300-dimensional embeddings
-VALIDATION_SPLIT = 0.2
-MODEL_PATH = 'models/bidirectional_lstm/'
+EMBEDDING_DIM = 300 # spacy has glove with 300-dimensional embeddings
+MODEL_NAME = 'bidirectional_lstm'
 
-import preprocess_data
+import model_utils
 
 print('loading the data')
-data_train = preprocess_data.get_train_data(preprocess_data.load_expressions())
+data_train = model_utils.load_data()
 
 texts = []
 labels = []
 
-intents = preprocess_data.load_intents()
-intents_lookup = {}
-# translation from intent value (string) to int (index)
-for index, value in enumerate(intents):
-    intents_lookup[value] = index
+intents = model_utils.load_labels()
+intents_lookup = model_utils.get_intents_lookup(intents)
 
-nlp = spacy.load('en')
-
-data = np.zeros((len(data_train), MAX_SEQUENCE_LENGTH, EMBEDDING_DIM))
+inputs = np.zeros((len(data_train), MAX_SEQUENCE_LENGTH, EMBEDDING_DIM))
 for idx, (text, intent) in enumerate(data_train):
-    # convert from sentences to glove matrix
-    # parse the sentence
-    doc = nlp(text)
-    for index, word in enumerate(doc):
-        data[idx][index] = word.vector
-
+    encoded = model_utils.encode_sentence(text)
+    # copy the values, equivalent of padding
+    inputs[idx,:encoded.shape[0],:encoded.shape[1]] = encoded[:MAX_SEQUENCE_LENGTH,:]
+    # append the id of the intent
     labels.append(intents_lookup[intent])
 
+# now from intent_1 to [0,1,0,...]
 labels = to_categorical(np.asarray(labels))
-print('Shape of data tensor:', data.shape)
+print('Shape of inputs tensor:', inputs.shape)
 print('Shape of label tensor:', labels.shape)
 
 # shuffle the data
-indices = np.arange(data.shape[0])
+indices = np.arange(inputs.shape[0])
 np.random.shuffle(indices)
-data = data[indices]
+inputs = inputs[indices]
 labels = labels[indices]
 
 print('Number of sentences for each intent')
@@ -88,61 +67,7 @@ def create_model():
     return model
 
 
-def my_confusion_matrix(y_true, y_pred, n_classes):
-    """This function returns the confusion matrix tolerant to classes without true samples"""
-    from scipy.sparse import coo_matrix
-    CM = coo_matrix((np.ones(y_true.shape[0], dtype=np.int), (y_true, y_pred)),
-                    shape=(n_classes, n_classes)
-                    ).toarray()
-    return CM
-
-def plot_confusion(confusion, label_values, path):
-    df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
-    #sn.set(font_scale=1.4)  # for label size
-    fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
-    fig.get_figure().savefig(path + '.png')
-    plt.clf()
-
 n_folds = 10
-# skf will profide indices to iterate over in each fold
-skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
+f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, MODEL_NAME)
 
-f1_scores = np.zeros((n_folds))
-confusion_sum = np.zeros((labels.shape[1], labels.shape[1]))
-
-for i, (train, test) in enumerate(skf.split(np.zeros((data.shape[0],)), np.zeros((data.shape[0],)))):
-    model = create_model()
-    if i == 0:
-        # first iteration
-        model.summary()
-        # this requires graphviz binaries also
-        plot_model(model, to_file=MODEL_PATH + 'model.png', show_shapes=True)
-
-    print("Running Fold", i + 1, "/", n_folds)
-
-    model.fit(data[train], labels[train], validation_data=(
-        data[test], labels[test]), epochs=10, batch_size=50)
-
-    # generate confusion matrix
-    y_pred = model.predict(data[test])
-    confusion = my_confusion_matrix(labels[test].argmax(
-        axis=1), y_pred.argmax(axis=1), labels.shape[1])
-
-    # compute f1 score weighted by support
-    f1 = f1_score(labels[test].argmax(axis=1),
-                  y_pred.argmax(axis=1), average='weighted')
-    print('f1 at fold ' + str(i + 1) + ': ' + str(f1))
-    
-    f1_scores[i] = f1
-    confusion_sum = np.add(confusion_sum, confusion)
-
-    plot_confusion(confusion, intents, MODEL_PATH + 'confusion_iteration_' + str(i + 1))
-
-
-print('mean f1 score: ' + str(f1_scores.mean()))
-plot_confusion(confusion_sum, intents, MODEL_PATH + 'confusion_sum')
-
-print("Now training on full dataset, no validation")
-model.fit(data, labels, nb_epoch=10, batch_size=50)
-
-model.save(MODEL_PATH + 'model_bidirectional_LSTM.h5')
+model_utils.save_full_train(create_model, inputs, labels, MODEL_NAME)
