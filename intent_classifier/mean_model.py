@@ -1,3 +1,5 @@
+import os
+import time
 import numpy as np
 
 from keras.utils.np_utils import to_categorical
@@ -16,7 +18,44 @@ from sklearn.metrics import confusion_matrix, f1_score
 
 MAX_SEQUENCE_LENGTH = 100
 EMBEDDING_DIM = 300 # spacy has glove with 300-dimensional embeddings
-MODEL_NAME = 'mean'
+
+def one_layer():
+    # sequence_input is a matrix of glove vectors (one for each input word)
+    sequence_input = Input(
+        shape=(EMBEDDING_DIM,), dtype='float32')
+    preds = Dense(len(intents), activation='softmax')(sequence_input)
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['acc'])
+
+    return model
+
+def two_layers():
+    # sequence_input is a matrix of glove vectors (one for each input word)
+    sequence_input = Input(
+        shape=(EMBEDDING_DIM,), dtype='float32')
+    hidden = Dense(200, activation='relu')(sequence_input)
+    #model.add(Dropout(0.5))
+    preds = Dense(len(intents), activation='softmax')(hidden)
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['acc'])
+
+    return model
+
+MODEL_NAME = os.environ['MODEL_NAME']
+folder_name = MODEL_NAME + '__' + str(time.time())
+models_available = {
+    # very bad
+    'mean_1l': one_layer,
+    # a bit better
+    'mean_2l': two_layers
+}
+
+def create_model():
+    return models_available[MODEL_NAME]()
 
 import model_utils
 
@@ -53,20 +92,7 @@ print(intents)
 print(labels.sum(axis=0))
 
 
-def create_model():
-    # sequence_input is a matrix of glove vectors (one for each input word)
-    sequence_input = Input(
-        shape=(EMBEDDING_DIM,), dtype='float32')
-    preds = Dense(len(intents), activation='softmax')(sequence_input)
-    model = Model(sequence_input, preds)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer='rmsprop',
-                  metrics=['acc'])
-
-    return model
-
-
 n_folds = 10
-f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, MODEL_NAME)
+f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, folder_name)
 
-model_utils.save_full_train(create_model, inputs, labels, MODEL_NAME, {'f1': f1})
+model_utils.save_full_train(create_model, inputs, labels, folder_name, {'f1': f1})

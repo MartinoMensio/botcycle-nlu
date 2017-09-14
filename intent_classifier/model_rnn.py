@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 
 from keras.utils.np_utils import to_categorical
@@ -31,12 +32,67 @@ def bidirectional_lstm():
                   optimizer='rmsprop',
                   metrics=['acc'])
 
+    """
+    model.add(Bidirectional(LSTM(shape['nr_hidden'])))
+    # dropout to avoid overfitting
+    model.add(Dropout(settings['dropout']))
+    model.add(Dense(shape['nr_class'], activation='sigmoid'))
+    model.compile(optimizer=Adam(lr=settings['lr']), loss='binary_crossentropy',
+                metrics=['accuracy'])
+    """
+
     return model
 
-MODEL_NAME = os.environ['MODEL_NAME'] # required, see values below
+def lstm():
+    # sequence_input is a matrix of glove vectors (one for each input word)
+    sequence_input = Input(
+        shape=(MAX_SEQUENCE_LENGTH, EMBEDDING_DIM,), dtype='float32')
+    l_lstm = LSTM(200)(sequence_input)
+    preds = Dense(len(intents), activation='softmax')(l_lstm)
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['acc'])
+
+    return model
+
+def gru():
+    # sequence_input is a matrix of glove vectors (one for each input word)
+    sequence_input = Input(
+        shape=(MAX_SEQUENCE_LENGTH, EMBEDDING_DIM,), dtype='float32')
+    l_lstm = GRU(200)(sequence_input)
+    preds = Dense(len(intents), activation='softmax')(l_lstm)
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['acc'])
+
+    return model
+
+def bidirectional_gru():
+    # sequence_input is a matrix of glove vectors (one for each input word)
+    sequence_input = Input(
+        shape=(MAX_SEQUENCE_LENGTH, EMBEDDING_DIM,), dtype='float32')
+    l_lstm = Bidirectional(GRU(100))(sequence_input)
+    preds = Dense(len(intents), activation='softmax')(l_lstm)
+    model = Model(sequence_input, preds)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['acc'])
+
+    return model
+
+# required, see values below
+MODEL_NAME = os.environ['MODEL_NAME']
+folder_name = MODEL_NAME + '__' + str(time.time())
 models_available = {
-    'bidirectional_lstm': bidirectional_lstm
-    # add there other models
+    # very bad
+    'lstm': lstm,
+    # very bad
+    'gru': gru,
+    # very good
+    'bidirectional_lstm': bidirectional_lstm,
+    'bidirectional_gru': bidirectional_gru
 }
 
 def create_model():
@@ -75,6 +131,6 @@ print(intents)
 print(labels.sum(axis=0))
 
 n_folds = 10
-f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, MODEL_NAME)
+f1 = model_utils.kfold(create_model, n_folds, inputs, labels, intents, folder_name)
 
-model_utils.save_full_train(create_model, inputs, labels, MODEL_NAME, {'f1': f1})
+model_utils.save_full_train(create_model, inputs, labels, folder_name, {'f1': f1})

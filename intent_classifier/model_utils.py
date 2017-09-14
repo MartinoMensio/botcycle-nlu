@@ -109,7 +109,8 @@ def save_full_train(create_model_function, inputs, labels, model_name, stats):
     model.fit(inputs, labels, nb_epoch=10, batch_size=50)
 
     model.save(model_path + 'model.h5')
-    stats['model'] = model_name
+    stats['model_name'] = model_name
+    stats['model'] = model.get_config()
 
     with open(model_path+'/stats.json', 'w+') as stats_file:
         json.dump(stats, stats_file)
