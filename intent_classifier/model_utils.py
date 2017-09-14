@@ -52,6 +52,9 @@ def plot_confusion(confusion, label_values, path):
     df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
     #sn.set(font_scale=1.4)  # for label size
     fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
+    df_cm.columns.name = 'predict'
+    df_cm.index.name = 'actual'
+    # TODO how to avoid overflow of canvas?
     fig.get_figure().savefig(path + '.png')
     plt.clf()
 

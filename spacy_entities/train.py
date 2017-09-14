@@ -67,16 +67,22 @@ def kfold(model_name, n_folds, data, entities_lookup):
             doc = nlp(test_data['text'])
             # true_ents maps 'start_index:end_index' of entity to entity name, e.g. {'10:16': 'LOCATION'}
             true_ents = {'{}:{}'.format(true_ent['start'], true_ent['end']): true_ent['entity'].upper() for true_ent in test_data['entities']}
+            
             for predicted_ent in doc.ents:
-                true_ent = true_ents.get('{}:{}'.format(predicted_ent.start_char, predicted_ent.end_char), 'NONE')
+                # on match an entry from true_ents is removed (see below computation of false negatives)
+                true_ent = true_ents.pop('{}:{}'.format(predicted_ent.start_char, predicted_ent.end_char), 'NONE')
                 # the fallback parameter is needed in case unexpected types of entities are found
                 predicted_class = extended_entities_lookup.get(predicted_ent.label_, extended_entities_lookup['NONE'])
                 true_class = extended_entities_lookup[true_ent]
-                # actual class indexes the columns while predicted class indexes the rows
-                confusion_sum[predicted_class, true_class] += 1
+                # actual class indexes the rows while predicted class indexes the columns
+                confusion_sum[true_class, predicted_class] += 1
                 if predicted_class is not true_class:
                     # TODO careful to boundaries
                     print('wrong prediction in "' + str(doc) + '". "' + str(predicted_ent.text) + '" was classified as', predicted_class, 'but was', true_class)
+
+            for false_negative in true_ents.values():
+                print('false negative found: ' + false_negative)
+                confusion_sum[extended_entities_lookup[false_negative], extended_entities_lookup['NONE']] += 1
 
             # now also add some NONE->NONE values, one for each sentence? TODO
             confusion_sum[extended_entities_lookup['NONE'], extended_entities_lookup['NONE']] += 1
@@ -85,11 +91,6 @@ def kfold(model_name, n_folds, data, entities_lookup):
         del nlp
         gc.collect()
     
-    """
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    f1 = 2*((precision*recall)/(precision+recall))
-    """
     print('final confusion matrix:\n', confusion_sum)
     return confusion_sum, extended_entities_lookup
 
@@ -143,6 +144,8 @@ def train_ner(nlp, data, entity_names, output_directory):
 # TODO remove duplicated code, same as intent model utils
 def plot_confusion(confusion, label_values, path):
     df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
+    df_cm.columns.name = 'predict'
+    df_cm.index.name = 'actual'
     #sn.set(font_scale=1.4)  # for label size
     fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
     fig.get_figure().savefig(path + '.png')
@@ -166,6 +169,14 @@ def main(n_folds='10', model_name='en', output_directory='models'):
         n_folds = int(n_folds)
         confusion, extended_entities_lookup = kfold(model_name, n_folds, data, entities_lookup)
         plot_confusion(confusion, [key for key in extended_entities_lookup], output_directory + '/confusion_' + str(n_folds) + 'folds')
+
+        tps = np.diagonal(confusion)
+        supports = confusion.sum(axis=1)
+        precisions = np.divide(tps, confusion.sum(axis=0))
+        recalls = np.divide(tps, supports)
+        f1s = 2*((precisions*recalls)/(precisions+recalls))
+        f1 = np.average(f1s, weights=supports)
+        print('f1 score: ', f1)
 
     # now train on full data
     nlp = spacy.load('en')
