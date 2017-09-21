@@ -13,7 +13,7 @@ import preprocess_data
 MAX_SEQUENCE_LENGTH = 100
 EMBEDDING_DIM = 300
 
-model = load_model('model_bidirectional_LSTM.h5')
+model = load_model('models/bidirectional_lstm/model.h5')
 nlp = spacy.load('en')
 
 print('Test your sentences.')

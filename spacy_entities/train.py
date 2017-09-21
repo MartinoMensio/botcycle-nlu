@@ -25,7 +25,6 @@ import numpy as np
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
 from keras.utils import plot_model
 
@@ -48,56 +47,69 @@ def get_entities_lookup(entities):
         entities_lookup[value] = index
     return entities_lookup
 
-def kfold(model_name, n_folds, data, entities_lookup):
+def kfold(model_name, n_folds, data, entities_lookup, tot_iterations, drop, learn_rate):
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
 
-    f1_scores = np.zeros((n_folds))
     # dimensions +1 because also no entity class (indexed last)
     extended_entities_lookup = entities_lookup.copy()
     extended_entities_lookup['NONE'] = len(entities_lookup)
-    confusion_sum = np.zeros((len(extended_entities_lookup), len(extended_entities_lookup)))
+    test_confusion_sum = np.zeros((len(extended_entities_lookup), len(extended_entities_lookup)))
+    train_confusion_sum = np.zeros((len(extended_entities_lookup), len(extended_entities_lookup)))
 
     for i, (train, test) in enumerate(skf.split(np.zeros((data.shape[0],)), np.zeros((data.shape[0],)))):
         print("Running Fold", i + 1, "/", n_folds)
         nlp = spacy.load(model_name)
         # passing None because don't want to save every fold model
-        train_ner(nlp, data[train], [key for key in entities_lookup], None)
-        for test_data in data[test]:
-            # test_data is like {'text':'', 'entities':{'entity','value','start','end'}}
-            doc = nlp(test_data['text'])
-            # true_ents maps 'start_index:end_index' of entity to entity name, e.g. {'10:16': 'LOCATION'}
-            true_ents = {'{}:{}'.format(true_ent['start'], true_ent['end']): true_ent['entity'].upper() for true_ent in test_data['entities']}
-            
-            for predicted_ent in doc.ents:
-                # on match an entry from true_ents is removed (see below computation of false negatives)
-                true_ent = true_ents.pop('{}:{}'.format(predicted_ent.start_char, predicted_ent.end_char), 'NONE')
-                # the fallback parameter is needed in case unexpected types of entities are found
-                predicted_class = extended_entities_lookup.get(predicted_ent.label_, extended_entities_lookup['NONE'])
-                true_class = extended_entities_lookup[true_ent]
-                # actual class indexes the rows while predicted class indexes the columns
-                confusion_sum[true_class, predicted_class] += 1
-                if predicted_class is not true_class:
-                    # TODO careful to boundaries
-                    print('wrong prediction in "' + str(doc) + '". "' + str(predicted_ent.text) + '" was classified as', predicted_class, 'but was', true_class)
-
-            for false_negative in true_ents.values():
-                print('false negative found: ' + false_negative)
-                confusion_sum[extended_entities_lookup[false_negative], extended_entities_lookup['NONE']] += 1
-
-            # now also add some NONE->NONE values, one for each sentence? TODO
-            confusion_sum[extended_entities_lookup['NONE'], extended_entities_lookup['NONE']] += 1
+        train_ner(nlp, data[train], [key for key in entities_lookup], None, tot_iterations, drop, learn_rate)
         
+        train_confusion_partial = eval_confusion(data[train], nlp, extended_entities_lookup)
+        test_confusion_partial = eval_confusion(data[test], nlp, extended_entities_lookup)
+
+        train_confusion_sum += train_confusion_partial
+        test_confusion_sum += test_confusion_partial
+
         # free memory before death
         del nlp
         gc.collect()
-    
-    print('final confusion matrix:\n', confusion_sum)
-    return confusion_sum, extended_entities_lookup
 
-def train_ner(nlp, data, entity_names, output_directory):
+    f1_train = f1_score(train_confusion_sum)
+    f1_test = f1_score(test_confusion_sum)
+    
+    print('final confusion matrix:\n', test_confusion_sum)
+    return test_confusion_sum, extended_entities_lookup, f1_test, f1_train
+
+def eval_confusion(evaluation_data, nlp, extended_entities_lookup):
+    confusion_sum = np.zeros((len(extended_entities_lookup), len(extended_entities_lookup)))
+    for test_data in evaluation_data:
+        # test_data is like {'text':'', 'entities':{'entity','value','start','end'}}
+        doc = nlp(test_data['text'])
+        # true_ents maps 'start_index:end_index' of entity to entity name, e.g. {'10:16': 'LOCATION'}
+        true_ents = {'{}:{}'.format(true_ent['start'], true_ent['end']): true_ent['entity'].upper() for true_ent in test_data['entities']}
+        
+        for predicted_ent in doc.ents:
+            # on match an entry from true_ents is removed (see below computation of false negatives)
+            true_ent = true_ents.pop('{}:{}'.format(predicted_ent.start_char, predicted_ent.end_char), 'NONE')
+            # the fallback parameter is needed in case unexpected types of entities are found
+            predicted_class = extended_entities_lookup.get(predicted_ent.label_, extended_entities_lookup['NONE'])
+            true_class = extended_entities_lookup[true_ent]
+            # actual class indexes the rows while predicted class indexes the columns
+            confusion_sum[true_class, predicted_class] += 1
+            if predicted_class is not true_class:
+                # TODO careful to boundaries
+                print('wrong prediction in "' + str(doc) + '". "' + str(predicted_ent.text) + '" was classified as', predicted_class, 'but was', true_class)
+
+        for false_negative in true_ents.values():
+            print('false negative found: ' + false_negative)
+            confusion_sum[extended_entities_lookup[false_negative], extended_entities_lookup['NONE']] += 1
+
+        # now also add some NONE->NONE values, one for each sentence? TODO
+        confusion_sum[extended_entities_lookup['NONE'], extended_entities_lookup['NONE']] += 1
+    
+    return confusion_sum
+
+def train_ner(nlp, data, entity_names, output_directory, tot_iterations, drop, learn_rate):
     train_data = list(map(lambda x: (x['text'], list(map(lambda ent: (
         ent['start'], ent['end'], ent['entity'].upper()), x['entities']))), data))
-
     for entity_name in entity_names:
             nlp.entity.add_label(entity_name)
 
@@ -109,11 +121,11 @@ def train_ner(nlp, data, entity_names, output_directory):
     random.seed(0)
     # You may need to change the learning rate. It's generally difficult to
     # guess what rate you should set, especially when you have limited data.
-    nlp.entity.model.learn_rate = 0.001
+    nlp.entity.model.learn_rate = learn_rate
 
     # average of last iterations, for printing something
     tot_loss = 0.
-    for itn in range(1000):
+    for itn in range(tot_iterations):
         random.shuffle(train_data)
         loss = 0.
         for raw_text, entity_offsets in train_data:
@@ -123,7 +135,7 @@ def train_ner(nlp, data, entity_names, output_directory):
             # As of 1.9, spaCy's parser now lets you supply a dropout probability
             # This might help the model generalize better from only a few
             # examples.
-            loss += nlp.entity.update(doc, gold, drop=0.9)
+            loss += nlp.entity.update(doc, gold, drop=drop)
 
         tot_loss += loss / len(train_data)
 
@@ -141,6 +153,15 @@ def train_ner(nlp, data, entity_names, output_directory):
     if output_directory:
         nlp.save_to_directory(output_directory)
 
+def f1_score(confusion):
+    tps = np.diagonal(confusion)
+    supports = confusion.sum(axis=1)
+    precisions = np.divide(tps, confusion.sum(axis=0))
+    recalls = np.divide(tps, supports)
+    f1s = 2*((precisions*recalls)/(precisions+recalls))
+    f1 = np.average(f1s, weights=supports)
+    return f1
+
 # TODO remove duplicated code, same as intent model utils
 def plot_confusion(confusion, label_values, path):
     df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
@@ -152,7 +173,7 @@ def plot_confusion(confusion, label_values, path):
     plt.clf()
 
 
-def main(n_folds='10', model_name='en', output_directory='models'):
+def main(n_folds='3', tot_iterations='1000', learn_rate='0.001', drop='0.9', model_name='en', output_directory='models'):
     print("Loading initial model", model_name)
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
@@ -165,22 +186,19 @@ def main(n_folds='10', model_name='en', output_directory='models'):
     entities = list(map(str.upper,entities))
     entities_lookup = get_entities_lookup(entities)
 
+    n_folds = int(n_folds)
+    tot_iterations = int(tot_iterations)
+    drop = float(drop)
+    learn_rate = float(learn_rate)
     if True:
-        n_folds = int(n_folds)
-        confusion, extended_entities_lookup = kfold(model_name, n_folds, data, entities_lookup)
-        plot_confusion(confusion, [key for key in extended_entities_lookup], output_directory + '/confusion_' + str(n_folds) + 'folds')
+        test_confusion, extended_entities_lookup, f1_test, f1_train = kfold(model_name, n_folds, data, entities_lookup, tot_iterations, drop, learn_rate)
+        plot_confusion(test_confusion, [key for key in extended_entities_lookup], output_directory + '/confusion_' + str(n_folds) + 'folds_' + str(tot_iterations) + 'iteration_' + str(drop) + 'drop_' + str(learn_rate) + 'learnrate')
 
-        tps = np.diagonal(confusion)
-        supports = confusion.sum(axis=1)
-        precisions = np.divide(tps, confusion.sum(axis=0))
-        recalls = np.divide(tps, supports)
-        f1s = 2*((precisions*recalls)/(precisions+recalls))
-        f1 = np.average(f1s, weights=supports)
-        print('f1 score: ', f1)
+        print(n_folds, 'folds', tot_iterations, 'iterations', learn_rate, 'learn_rate', drop, 'dropout', 'f1 on test data:', f1_test, 'f1 on train data:', f1_train)
 
     # now train on full data
     nlp = spacy.load('en')
-    train_ner(nlp, data, entities, output_directory)
+    train_ner(nlp, data, entities, output_directory, tot_iterations, drop, learn_rate)
 
 if __name__ == '__main__':
     import plac
