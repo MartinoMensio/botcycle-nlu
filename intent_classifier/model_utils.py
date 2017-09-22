@@ -49,12 +49,11 @@ def my_confusion_matrix(y_true, y_pred, n_classes):
     return CM
 
 def plot_confusion(confusion, label_values, path):
-    df_cm = pd.DataFrame(confusion, index=label_values, columns=label_values)
-    #sn.set(font_scale=1.4)  # for label size
+    # to avoid overflow of canvas, labels are numbers
+    df_cm = pd.DataFrame(confusion, index=range(len(label_values)), columns=range(len(label_values)))
     fig = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
-    df_cm.columns.name = 'predict'
-    df_cm.index.name = 'actual'
-    # TODO how to avoid overflow of canvas?
+    fig.set_xlabel('predict')
+    fig.set_ylabel('actual')
     fig.get_figure().savefig(path + '.png')
     plt.clf()
 
@@ -69,8 +68,11 @@ def kfold(create_model_function, n_folds, data, labels, label_names, model_name)
     f1_scores = np.zeros((n_folds))
     confusion_sum = np.zeros((labels.shape[1], labels.shape[1]))
 
+    history = []
+
     for i, (train, test) in enumerate(skf.split(np.zeros((data.shape[0],)), np.zeros((data.shape[0],)))):
         model = create_model_function()
+        epochs = 50
         if i == 0:
             # first iteration
             model.summary()
@@ -79,8 +81,10 @@ def kfold(create_model_function, n_folds, data, labels, label_names, model_name)
 
         print("Running Fold", i + 1, "/", n_folds)
 
-        model.fit(data[train], labels[train], validation_data=(
-            data[test], labels[test]), epochs=10, batch_size=50)
+        history_i = model.fit(data[train], labels[train], validation_data=(
+            data[test], labels[test]), epochs=epochs, batch_size=50)
+
+        history.append(history_i)
 
         # generate confusion matrix
         y_pred = model.predict(data[test])
@@ -101,6 +105,25 @@ def kfold(create_model_function, n_folds, data, labels, label_names, model_name)
     print('mean f1 score: ' + str(f1_mean))
     plot_confusion(confusion_sum, label_names, model_path + 'confusion_sum')
 
+    # do average of history on the folds
+    acc = np.zeros((epochs))
+    val_acc = np.zeros((epochs))
+    for h in history:
+        acc += h.history['acc']
+        val_acc += h.history['val_acc']
+
+    acc /= len(history)
+    val_acc /= len(history)
+
+    # summarize history for accuracy
+    plt.plot(acc)
+    plt.plot(val_acc)
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='lower right')
+    plt.savefig(model_path + 'acccuracy.png')
+
     return f1_mean
 
 def save_full_train(create_model_function, inputs, labels, model_name, stats):
@@ -109,7 +132,8 @@ def save_full_train(create_model_function, inputs, labels, model_name, stats):
         os.makedirs(model_path)
     print("Now training on full dataset, no validation")
     model = create_model_function()
-    model.fit(inputs, labels, nb_epoch=10, batch_size=50)
+    # TODO get nb_epoch from caller
+    #model.fit(inputs, labels, nb_epoch=10, batch_size=50)
 
     model.save(model_path + 'model.h5')
     stats['model_name'] = model_name
