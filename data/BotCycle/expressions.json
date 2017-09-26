@@ -43,7 +43,25 @@
       ]
     },
     {
+      "text" : "Gimme a bike 🚲",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_bike\""
+        }
+      ]
+    },
+    {
       "text" : "Give me a bike",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_bike\""
+        }
+      ]
+    },
+    {
+      "text" : "Give me the nearest bike station",
       "entities" : [
         {
           "entity" : "intent",
@@ -111,6 +129,36 @@
       ]
     },
     {
+      "text" : "I am at Nizza",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"Nizza\"",
+          "start" : 8,
+          "end" : 13
+        }
+      ]
+    },
+    {
+      "text" : "I am at Pagno",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"Pagno\"",
+          "start" : 8,
+          "end" : 13
+        }
+      ]
+    },
+    {
       "text" : "I am at piazza castello torino",
       "entities" : [
         {
@@ -122,6 +170,21 @@
           "value" : "\"piazza castello torino\"",
           "start" : 8,
           "end" : 30
+        }
+      ]
+    },
+    {
+      "text" : "I am at saluzzo",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"saluzzo\"",
+          "start" : 8,
+          "end" : 15
         }
       ]
     },
@@ -189,6 +252,22 @@
       ]
     },
     {
+      "text" : "I want to go to Nizza",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"Nizza\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 21
+        }
+      ]
+    },
+    {
       "text" : "I want to go to Torino esposizioni",
       "entities" : [
         {
@@ -205,6 +284,54 @@
       ]
     },
     {
+      "text" : "I want to go to nizza",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"nizza\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 21
+        }
+      ]
+    },
+    {
+      "text" : "I want to go to piazza carducci torino",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"piazza carducci torino\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 38
+        }
+      ]
+    },
+    {
+      "text" : "I want to go to venaria",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"venaria\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 23
+        }
+      ]
+    },
+    {
       "text" : "Locate me",
       "entities" : [
         {
@@ -214,11 +341,29 @@
       ]
     },
     {
+      "text" : "Thanks",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"thank\""
+        }
+      ]
+    },
+    {
       "text" : "Where can I find a bike?",
       "entities" : [
         {
           "entity" : "intent",
           "value" : "\"search_bike\""
+        }
+      ]
+    },
+    {
+      "text" : "Where can I leave the bike, man?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_slot\""
         }
       ]
     },
@@ -255,6 +400,39 @@
         {
           "entity" : "intent",
           "value" : "\"search_bike\""
+        }
+      ]
+    },
+    {
+      "text" : "book a bike",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"booking\""
+        }
+      ]
+    },
+    {
+      "text" : "book me a bike",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"booking\""
+        }
+      ]
+    },
+    {
+      "text" : "book me a bike near central park",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"booking\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"central park\"",
+          "start" : 20,
+          "end" : 32
         }
       ]
     },
@@ -382,6 +560,15 @@
       ]
     },
     {
+      "text" : "done",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"end_discussion\""
+        }
+      ]
+    },
+    {
       "text" : "find a free slot near politecnico",
       "entities" : [
         {
@@ -486,6 +673,21 @@
           "value" : "\"porta palazzo\"",
           "start" : 18,
           "end" : 31
+        }
+      ]
+    },
+    {
+      "text" : "give me a bike near piazza castello torino",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_bike\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"piazza castello torino\"",
+          "start" : 20,
+          "end" : 42
         }
       ]
     },
@@ -604,6 +806,15 @@
     },
     {
       "text" : "hello there!",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"greeting\""
+        }
+      ]
+    },
+    {
+      "text" : "hey",
       "entities" : [
         {
           "entity" : "intent",
@@ -794,6 +1005,36 @@
       ]
     },
     {
+      "text" : "i am at new york",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"new york\"",
+          "start" : 8,
+          "end" : 16
+        }
+      ]
+    },
+    {
+      "text" : "i am at nizza",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"nizza\"",
+          "start" : 8,
+          "end" : 13
+        }
+      ]
+    },
+    {
       "text" : "i am at pagno",
       "entities" : [
         {
@@ -805,6 +1046,36 @@
           "value" : "\"pagno\"",
           "start" : 8,
           "end" : 13
+        }
+      ]
+    },
+    {
+      "text" : "i am at palo alto",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"palo alto\"",
+          "start" : 8,
+          "end" : 17
+        }
+      ]
+    },
+    {
+      "text" : "i am at parigi",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"parigi\"",
+          "start" : 8,
+          "end" : 14
         }
       ]
     },
@@ -959,6 +1230,21 @@
       ]
     },
     {
+      "text" : "i am at porta susa",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"porta susa\"",
+          "start" : 8,
+          "end" : 18
+        }
+      ]
+    },
+    {
       "text" : "i am at residenza borsellino torino",
       "entities" : [
         {
@@ -1090,6 +1376,21 @@
           "value" : "\"via pietro boggio torino\"",
           "start" : 8,
           "end" : 32
+        }
+      ]
+    },
+    {
+      "text" : "i am in china",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"set_position\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"china\"",
+          "start" : 8,
+          "end" : 13
         }
       ]
     },
@@ -1780,6 +2081,15 @@
       ]
     },
     {
+      "text" : "i want a free slot",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_slot\""
+        }
+      ]
+    },
+    {
       "text" : "i want an empty slot in the city center",
       "entities" : [
         {
@@ -1912,6 +2222,22 @@
       ]
     },
     {
+      "text" : "i want to go to honolulu",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"honolulu\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 24
+        }
+      ]
+    },
+    {
       "text" : "i want to go to new york",
       "entities" : [
         {
@@ -1924,6 +2250,38 @@
           "role" : "to",
           "start" : 16,
           "end" : 24
+        }
+      ]
+    },
+    {
+      "text" : "i want to go to nizza",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"nizza\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 21
+        }
+      ]
+    },
+    {
+      "text" : "i want to go to paris",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"paris\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 21
         }
       ]
     },
@@ -2036,6 +2394,31 @@
           "role" : "to",
           "start" : 16,
           "end" : 23
+        }
+      ]
+    },
+    {
+      "text" : "i want to go to villeneuve-loubet",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"plan_trip\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"villeneuve-loubet\"",
+          "role" : "to",
+          "start" : 16,
+          "end" : 33
+        }
+      ]
+    },
+    {
+      "text" : "i want to park",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_slot\""
         }
       ]
     },
@@ -2210,6 +2593,21 @@
       ]
     },
     {
+      "text" : "is torino supported?",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"city_supported\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"torino\"",
+          "start" : 3,
+          "end" : 9
+        }
+      ]
+    },
+    {
       "text" : "locate me",
       "entities" : [
         {
@@ -2233,6 +2631,15 @@
         {
           "entity" : "intent",
           "value" : "\"search_bike\""
+        }
+      ]
+    },
+    {
+      "text" : "ok",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"end_discussion\""
         }
       ]
     },
@@ -2322,6 +2729,30 @@
         {
           "entity" : "intent",
           "value" : "\"ask_position\""
+        }
+      ]
+    },
+    {
+      "text" : "reserve me a bike",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"booking\""
+        }
+      ]
+    },
+    {
+      "text" : "reserve me a bike near polito",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"booking\""
+        },
+        {
+          "entity" : "location",
+          "value" : "\"polito\"",
+          "start" : 23,
+          "end" : 29
         }
       ]
     },
@@ -2439,6 +2870,15 @@
         {
           "entity" : "intent",
           "value" : "\"thank\""
+        }
+      ]
+    },
+    {
+      "text" : "want a bike",
+      "entities" : [
+        {
+          "entity" : "intent",
+          "value" : "\"search_bike\""
         }
       ]
     },

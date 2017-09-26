@@ -12,7 +12,13 @@
         "value" : "ask_position"
       },
       {
+        "value" : "booking"
+      },
+      {
         "value" : "city_supported"
+      },
+      {
+        "value" : "end_discussion"
       },
       {
         "value" : "greeting"
