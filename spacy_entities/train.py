@@ -40,6 +40,8 @@ from spacy.tagger import Tagger
 
 import tag_data
 
+DATASET = 'atis' # change to 'botcycle'
+
 def get_entities_lookup(entities):
     """From a list of entities gives back a dictionary that maps the value to the index in the original list"""
     entities_lookup = {}
@@ -156,9 +158,13 @@ def train_ner(nlp, data, entity_names, output_directory, tot_iterations, drop, l
 def f1_score(confusion):
     tps = np.diagonal(confusion)
     supports = confusion.sum(axis=1)
-    precisions = np.divide(tps, confusion.sum(axis=0))
-    recalls = np.divide(tps, supports)
-    f1s = 2*((precisions*recalls)/(precisions+recalls))
+    # TODO remove this ignore divide by 0, shouldn't happen
+    with np.errstate(divide='ignore', invalid='ignore'):
+        precisions = np.true_divide(tps, confusion.sum(axis=0))
+        recalls = np.true_divide(tps, supports)
+        f1s = 2*np.true_divide((precisions*recalls),(precisions+recalls))
+        f1s[f1s == np.inf] = 0
+        f1s = np.nan_to_num(f1s)
     f1 = np.average(f1s, weights=supports)
     return f1
 
@@ -178,11 +184,17 @@ def main(n_folds='3', tot_iterations='1000', learn_rate='0.001', drop='0.9', mod
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
 
-    expressions = tag_data.load_expressions()
-    data = tag_data.tag(expressions)
+    if DATASET is 'botcycle':
+        expressions = tag_data.load_expressions()
+        data = tag_data.tag(expressions)
+        entities = tag_data.load_entities()
+    else:
+        expressions = tag_data.load_expressions_atis()
+        data = expressions
+        entities = tag_data.load_entities_atis()
+    data = expressions
     data = np.array(data)
 
-    entities = tag_data.load_entities()
     entities = list(map(str.upper,entities))
     entities_lookup = get_entities_lookup(entities)
 
