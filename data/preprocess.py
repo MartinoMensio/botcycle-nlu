@@ -11,7 +11,7 @@ def atis_preprocess():
     preprocesses the atis dataset, taking as source the files atis.test.w-intent.iob and
     atis.train.w-intent.iob
 
-    Produces in output the files entity_types.json, train.json, test.json
+    Produces in output the files entity_types.json, fold_train.json, fold_test.json
     """
     # TODO define flag to use entity.subentity or only entity
     with open('atis/source/atis.test.w-intent.iob') as txt_file:
@@ -19,16 +19,19 @@ def atis_preprocess():
     test_set = atis_normalize_raw_set(raw_test_set)
     with open('atis/source/atis.train.w-intent.iob') as txt_file:
         train_set = txt_file.readlines()
-    train_tagged, entity_types = atis_lines_to_json(train_set)
-    test_tagged, _ = atis_lines_to_json(test_set)
+    train_tagged, entity_types, intent_types = atis_lines_to_json(train_set)
+    test_tagged, _, _ = atis_lines_to_json(test_set)
+
+    with open('atis/intent_types.json', 'w') as outfile:
+        json.dump(intent_types, outfile)
 
     with open('atis/entity_types.json', 'w') as outfile:
         json.dump(entity_types, outfile)
 
-    with open('atis/train.json', 'w') as outfile:
+    with open('atis/fold_train.json', 'w') as outfile:
         json.dump(train_tagged, outfile)
 
-    with open('atis/test.json', 'w') as outfile:
+    with open('atis/fold_test.json', 'w') as outfile:
         json.dump(test_tagged, outfile)
 
 
@@ -50,11 +53,13 @@ def atis_normalize_raw_set(content):
 
 def atis_lines_to_json(content):
     """Transforms the content (list of lines) in json,
-    detecting entity start and end indexes in sentences"""
+    detecting entity start and end indexes in sentences.
+    Returns the tagged dataset, the enitity_types and the intent_types"""
 
     result = []
 
     entity_types = set()
+    intent_types = set()
 
     for line in content:
         element = {}
@@ -68,6 +73,8 @@ def atis_lines_to_json(content):
         annotations = annotations.split()
         entities_tags = annotations[1:-1]
         intent = annotations[-1]
+        # TODO handle multi-intent
+        intent_types.add(intent)
         element['intent'] = intent
         # chunks are defined by the space, IOB notations correspond to this
         # split
@@ -83,7 +90,7 @@ def atis_lines_to_json(content):
                     if state == 'B':
                         # close previous entity
                         entity['end'] = sum(map(len, chunks[:idx])) + idx - 1
-                        entity['value'] = element['text'][entity['start']                                                          :entity['end']]
+                        entity['value'] = element['text'][entity['start']:entity['end']]
                         entities.append(entity)
                     # beginning of new entity
                     entity = {'entity': tag[1], 'start': sum(
@@ -111,17 +118,23 @@ def atis_lines_to_json(content):
         element['entities'] = entities
         result.append(element)
 
-    return result, list(sorted(entity_types))
+    return result, list(sorted(entity_types)), list(sorted(intent_types))
 
 
 def wit_preprocess():
     """Preprocesses the wit.ai dataset from the folder wit/BotCycle.
-    To download the updated dataset, use the download.sh script"""
+    To download the updated dataset, use the download.sh script.
+    Saves the tagged dataset, the enitity_types and the intent_types"""
     enitites_path = 'wit/BotCycle/entities'
     entities_files = os.listdir(enitites_path)
     # remove .json suffix
     entity_types = list(map(lambda file_name: file_name[:-5], entities_files))
     entity_types.remove('intent')
+
+    with open(enitites_path + '/intent.json') as json_file:
+        intents = json.load(json_file)
+    
+    intent_types = list(map(lambda val: val['value'], intents['data']['values']))
 
     with open('wit/BotCycle/expressions.json') as json_file:
         expressions = json.load(json_file)
@@ -130,16 +143,20 @@ def wit_preprocess():
 
     # perform the split on 5 folds
     dataset = np.array(dataset)
-    # initialize the random generator seed to the size of the dataset, just to make it split always the same
+    # initialize the random generator seed to the size of the dataset, just to
+    # make it split always the same
     np.random.seed(dataset.size)
     np.random.shuffle(dataset)
     fold_size = len(dataset) // 5
     folds = [dataset[:fold_size], dataset[fold_size:2 * fold_size],
              dataset[2 * fold_size:3 * fold_size], dataset[3 * fold_size:4 * fold_size], dataset[4 * fold_size:]]
-    
+
     for idx, fold in enumerate(folds):
         with open('wit/fold_{}.json'.format(idx + 1), 'w') as outfile:
             json.dump(fold.tolist(), outfile)
+
+    with open('wit/intent_types.json', 'w') as outfile:
+        json.dump(intent_types, outfile)
 
     with open('wit/entity_types.json', 'w') as outfile:
         json.dump(entity_types, outfile)
